@@ -1,17 +1,20 @@
-mutation SimultaneousCreateJob($Job1: String!, $Job2: String!, $Job3: String!) {
-  job1: Enqueue(task:$Job1) {
+mutation SimultaneousCreateJob($Job1: String!, $Job2: String!, $Job3: String!, $Key1: String, $Key2: String, $Key3: String) {
+  job1: Enqueue(task: $Job1, key: $Key1) {
     id
+    status
   }
-  job2: Enqueue(task:$Job2) {
+  job2: Enqueue(task: $Job2, key: $Key2) {
     id
+    status
   }
-  job3: Enqueue(task:$Job3) {
+  job3: Enqueue(task: $Job3, key: $Key3) {
     id
+    status
   }
 }
 
-mutation SimulateUnstableJob {
-  Enqueue(task: "unstable-job") {
+mutation SimulateUnstableJob($Key: String) {
+  Enqueue(task: "unstable-job", key: $Key) {
     id
     attempts
     status
@@ -31,6 +34,7 @@ query GetAllJobs {
   Jobs {
     id
     task
+    status
   }
 }
 

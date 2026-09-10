@@ -2,11 +2,11 @@ package mutation
 
 import (
 	"context"
-	"errors"
 	_dataloader "jobqueue/delivery/graphql/dataloader"
 	"jobqueue/delivery/graphql/dto"
 	"jobqueue/delivery/graphql/resolver"
 	_interface "jobqueue/interface"
+	custerr "jobqueue/pkg/errors"
 )
 
 type JobMutation struct {
@@ -15,9 +15,14 @@ type JobMutation struct {
 }
 
 func (q JobMutation) Enqueue(ctx context.Context, req dto.EnqueueRequest) (*resolver.JobResolver, error) {
-	job, err := q.jobService.Enqueue(ctx, req.Task, req.Key)
+	var key string
+	if req.Key != nil {
+		key = *req.Key
+	}
+
+	job, err := q.jobService.Enqueue(ctx, req.Task, key)
 	if job == nil {
-		return nil, errors.New("failed to enqueue job: unexpected nil output")
+		return nil, custerr.ErrUnexpectedNil
 	}
 
 	if err != nil {
@@ -38,7 +43,7 @@ func (q JobMutation) RetryDeadJob(ctx context.Context, args struct{ ID string })
 	}
 
 	if job == nil {
-		return nil, errors.New("failed to retry dead job: unexpected nil output")
+		return nil, custerr.ErrUnexpectedNil
 	}
 
 	return &resolver.JobResolver{

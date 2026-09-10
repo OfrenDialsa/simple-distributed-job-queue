@@ -2,7 +2,7 @@ package entity
 
 type Job struct {
 	ID       string `json:"id"`
-	Key      string `json:"key"` // for idempotency
+	Key      string `json:"key,omitempty"` // for idempotency
 	Task     string `json:"task"`
 	Status   string `json:"status"`
 	Attempts int32  `json:"attempts"`

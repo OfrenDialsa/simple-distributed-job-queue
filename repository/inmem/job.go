@@ -2,9 +2,9 @@ package inmemrepo
 
 import (
 	"context"
-	"errors"
 	"jobqueue/entity"
 	_interface "jobqueue/interface"
+	custerr "jobqueue/pkg/errors"
 	"sync"
 )
 
@@ -17,7 +17,7 @@ type jobRepository struct {
 // Save Job
 func (t *jobRepository) Save(ctx context.Context, job *entity.Job) error {
 	if job == nil {
-		return errors.New("job cannot be nil")
+		return custerr.ErrJobCannotBeNil
 	}
 
 	t.mu.Lock()
@@ -35,7 +35,7 @@ func (t *jobRepository) Update(ctx context.Context, job *entity.Job) error {
 	defer t.mu.Unlock()
 
 	if _, exists := t.inMemDb[job.ID]; !exists {
-		return errors.New("job not found")
+		return custerr.ErrJobNotFound
 	}
 
 	t.inMemDb[job.ID] = job
@@ -49,7 +49,7 @@ func (t *jobRepository) FindByID(ctx context.Context, id string) (*entity.Job, e
 
 	job, exists := t.inMemDb[id]
 	if !exists {
-		return nil, errors.New("job not found")
+		return nil, custerr.ErrJobNotFound
 	}
 
 	// return copy for race condition safety
@@ -151,7 +151,7 @@ func (t *jobRepository) GetFromDLQ(ctx context.Context, id string) (*entity.Job,
 
 	job, exists := t.dlqDb[id]
 	if !exists {
-		return nil, errors.New("job not found in DLQ")
+		return nil, custerr.ErrDLQJobNotFound
 	}
 	return job, nil
 }

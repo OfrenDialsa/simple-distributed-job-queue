@@ -2,10 +2,10 @@ package service
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"jobqueue/entity"
 	_interface "jobqueue/interface"
+	custerr "jobqueue/pkg/errors"
 	"jobqueue/pkg/ulid"
 	"log"
 )
@@ -20,14 +20,14 @@ type Initiator func(s *jobService) *jobService
 
 func (q jobService) GetAllJobs(ctx context.Context) ([]*entity.Job, error) {
 	if q.jobRepo == nil {
-		return nil, errors.New("job repository is not initialized")
+		return nil, custerr.ErrRepositoryNotInitialized
 	}
 	return q.jobRepo.FindAll(ctx)
 }
 
 func (q jobService) GetJobByID(ctx context.Context, id string) (*entity.Job, error) {
 	if q.jobRepo == nil {
-		return nil, errors.New("job repository is not initialized")
+		return nil, custerr.ErrRepositoryNotInitialized
 	}
 
 	job, err := q.jobRepo.FindByID(ctx, id)
@@ -40,7 +40,7 @@ func (q jobService) GetJobByID(ctx context.Context, id string) (*entity.Job, err
 
 func (q jobService) Enqueue(ctx context.Context, taskName, key string) (*entity.Job, error) {
 	if q.jobRepo == nil {
-		return nil, errors.New("job repository is not initialized")
+		return nil, custerr.ErrRepositoryNotInitialized
 	}
 
 	if key != "" {
@@ -81,26 +81,26 @@ func (q jobService) Enqueue(ctx context.Context, taskName, key string) (*entity.
 
 func (q jobService) GetAllJobStatus(ctx context.Context) (*entity.JobStatus, error) {
 	if q.jobRepo == nil {
-		return nil, errors.New("job repository is not initialized")
+		return nil, custerr.ErrRepositoryNotInitialized
 	}
 	return q.jobRepo.GetStatusSummary(ctx)
 }
 
 func (q jobService) GetJobsByStatus(ctx context.Context, status string) ([]*entity.Job, error) {
 	if q.jobRepo == nil {
-		return nil, errors.New("job repository is not initialized")
+		return nil, custerr.ErrRepositoryNotInitialized
 	}
 	return q.jobRepo.FindByStatus(ctx, status)
 }
 
 func (s *jobService) RetryDeadJob(ctx context.Context, jobID string) (*entity.Job, error) {
 	if s.jobRepo == nil {
-		return nil, errors.New("job repository is not initialized")
+		return nil, custerr.ErrRepositoryNotInitialized
 	}
 
 	deadJob, err := s.jobRepo.GetFromDLQ(ctx, jobID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to retrieve job from DLQ: %w", err)
+		return nil, custerr.ErrDLQJobNotFound
 	}
 
 	deadJob.Status = entity.StatusPending
@@ -108,11 +108,11 @@ func (s *jobService) RetryDeadJob(ctx context.Context, jobID string) (*entity.Jo
 	deadJob.Task = "retry-dead-job"
 
 	if err := s.jobRepo.Update(ctx, deadJob); err != nil {
-		return nil, fmt.Errorf("failed to reset job status: %w", err)
+		return nil, fmt.Errorf("%w: %v", custerr.ErrUpdateJobStatusFailed, err)
 	}
 
 	if err := s.jobRepo.RemoveFromDLQ(ctx, jobID); err != nil {
-		return nil, fmt.Errorf("failed to remove job from DLQ: %w", err)
+		return nil, fmt.Errorf("%w: %v", custerr.ErrRemoveFromDLQFailed, err)
 	}
 
 	if s.worker != nil {
