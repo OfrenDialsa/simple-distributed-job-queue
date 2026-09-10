@@ -5,6 +5,7 @@ import (
 	"jobqueue/entity"
 	_interface "jobqueue/interface"
 	custerr "jobqueue/pkg/errors"
+	"sort"
 	"sync"
 )
 
@@ -86,6 +87,11 @@ func (t *jobRepository) FindAll(ctx context.Context) ([]*entity.Job, error) {
 		jobCopy := *job
 		jobs = append(jobs, &jobCopy)
 	}
+
+	sort.Slice(jobs, func(i, j int) bool {
+		return jobs[i].ID > jobs[j].ID
+	})
+
 	return jobs, nil
 }
 

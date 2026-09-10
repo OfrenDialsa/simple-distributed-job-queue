@@ -1,0 +1,55 @@
+{{define "index.html"}}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Job Queue Dashboard</title>
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 p-8">
+    <div class="max-w-6xl mx-auto space-y-6">
+        <h1 class="text-3xl font-bold text-gray-800">Job Queue Dashboard</h1>
+
+        <form id="job-form" class="bg-white p-4 rounded shadow space-y-4">
+            <input type="hidden" name="idempotency_key" value="{{ .UniqueID }}">
+            <div class="grid grid-cols-3 gap-4">
+                <input type="text" name="job1" value="JobTest1" class="border p-2 rounded w-full">
+                <input type="text" name="job2" value="JobTest2" class="border p-2 rounded w-full">
+                <input type="text" name="job3" value="JobTest3" class="border p-2 rounded w-full">
+            </div>
+            <div class="flex gap-2">
+                <button hx-post="/jobqueue/dashboard/jobs/create" 
+                        hx-include="#job-form" 
+                        hx-target="#jobs-table" 
+                        class="bg-blue-600 text-white px-4 py-2 rounded">
+                    Create 3 Jobs
+                </button>
+                <button hx-post="/jobqueue/dashboard/jobs/unstable" 
+                        hx-target="#jobs-table" 
+                        class="bg-yellow-600 text-white px-4 py-2 rounded">
+                    Create Unstable Job
+                </button>
+            </div>
+        </form>
+
+        <div id="status-summary" 
+             hx-get="/jobqueue/dashboard/status" 
+             hx-trigger="load, every 2s">
+        </div>
+
+        <div class="grid grid-cols-3 gap-6">
+            <div id="jobs-table" 
+                 class="col-span-2 bg-white rounded shadow p-4"
+                 hx-get="/jobqueue/dashboard/jobs" 
+                 hx-trigger="load, every 2s">
+            </div>
+
+            <div id="job-detail" class="bg-white rounded shadow p-4">
+                <p class="text-gray-500 italic">Klik "View" pada baris tabel untuk melihat detail job.</p>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
+{{end}}

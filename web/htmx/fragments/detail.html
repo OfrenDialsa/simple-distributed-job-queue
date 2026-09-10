@@ -1,0 +1,21 @@
+{{define "detail.html"}}
+<h2 class="text-xl font-bold mb-4 text-gray-800">Detail Job</h2>
+<div class="space-y-3">
+    <div>
+        <label class="text-xs text-gray-500 uppercase font-bold">Job ID</label>
+        <p class="font-mono text-sm bg-gray-100 p-2 rounded">{{.ID}}</p>
+    </div>
+    <div>
+        <label class="text-xs text-gray-500 uppercase font-bold">Task Name</label>
+        <p class="font-semibold text-gray-800">{{.Task}}</p>
+    </div>
+    <div>
+        <label class="text-xs text-gray-500 uppercase font-bold">Status</label>
+        <p class="font-semibold">{{.Status}}</p>
+    </div>
+    <div>
+        <label class="text-xs text-gray-500 uppercase font-bold">Execution Attempts</label>
+        <p class="font-semibold">{{.Attempts}}</p>
+    </div>
+</div>
+{{end}}
