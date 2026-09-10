@@ -89,12 +89,7 @@ func main() {
 	)
 	e.Echo.GET("/graphiql", handler.GraphiQLHandler)
 
-	// helloHandler := _htmx.NewHelloHandler()
-	// e.Echo.GET("/jobqueue/dashboard", helloHandler.Page)
-	// e.Echo.GET("/jobqueue/dashboard/message", helloHandler.Message)
-
 	e.Echo.Renderer = _htmx.NewTemplateRenderer("web/htmx")
-
 	htmxHandler := _htmx.NewHandler(jobService)
 
 	e.Echo.GET("/jobqueue/dashboard", htmxHandler.Page)

@@ -6,13 +6,16 @@ import (
 	"jobqueue/entity"
 	_interface "jobqueue/interface"
 	"math/rand"
+	"sync/atomic"
 	"time"
 
 	"go.uber.org/zap"
 )
 
 type jobWorker struct {
-	repo _interface.JobRepository
+	repo        _interface.JobRepository
+	baseDelay   time.Duration
+	workLatency time.Duration
 }
 
 // initiator
@@ -20,9 +23,18 @@ type Initiator func(w *jobWorker) *jobWorker
 
 func (w *jobWorker) ProcessJob(ctx context.Context, job *entity.Job) error {
 	const maxAttempts = 3
-	delay := 1 * time.Second
+
+	if job.Status == entity.StatusCompleted {
+		return nil
+	}
 
 	for {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		default:
+		}
+
 		job.Status = entity.StatusRunning
 		if err := w.repo.Update(ctx, job); err != nil {
 			zap.L().Error("Worker failed to update job status to RUNNING",
@@ -32,12 +44,29 @@ func (w *jobWorker) ProcessJob(ctx context.Context, job *entity.Job) error {
 			return fmt.Errorf("failed to update status to RUNNING: %w", err)
 		}
 
-		time.Sleep(500 * time.Millisecond)
-		isFailed := false
-		if job.Task == "unstable-job" {
-			job.Attempts++
+		if w.workLatency > 0 {
+			timer := time.NewTimer(w.workLatency)
+			select {
+			case <-ctx.Done():
+				timer.Stop()
+				return ctx.Err()
+			case <-timer.C:
+			}
+		}
 
-			if job.Attempts < 3 || rand.Float32() < 0.7 {
+		atomic.AddInt32(&job.Attempts, 1)
+		currentAttempt := atomic.LoadInt32(&job.Attempts)
+
+		isFailed := false
+		switch job.Task {
+		case "always-fail-job":
+			// testing purpose
+			isFailed = true
+		case "unstable-job":
+			// simulate job failure (70% probability):
+			// - attempts 1 & 2: temporary failure (FAILED) -> scheduled for automatic retry.
+			// - attempt 3: retry limit reached -> moved to DLQ (DEAD).
+			if currentAttempt >= maxAttempts || rand.Float32() < 0.7 {
 				isFailed = true
 			}
 		}
@@ -47,12 +76,12 @@ func (w *jobWorker) ProcessJob(ctx context.Context, job *entity.Job) error {
 			zap.L().Warn("Job execution failed",
 				zap.String("job_id", job.ID),
 				zap.String("task", job.Task),
-				zap.Int32("attempt", job.Attempts),
+				zap.Int32("attempt", currentAttempt),
 				zap.Int("max_attempts", maxAttempts),
 			)
 
 			// if retry doesnt exceed max attempt
-			if job.Attempts < maxAttempts {
+			if currentAttempt < maxAttempts {
 				job.Status = entity.StatusFailed
 				if err := w.repo.Update(ctx, job); err != nil {
 					zap.L().Error("Worker failed to update job status to FAILED",
@@ -62,13 +91,21 @@ func (w *jobWorker) ProcessJob(ctx context.Context, job *entity.Job) error {
 					return fmt.Errorf("failed to update status to FAILED: %w", err)
 				}
 
-				backoff := delay * time.Duration(1<<(job.Attempts-1))
+				backoff := w.baseDelay * time.Duration(1<<(currentAttempt-1))
 				zap.L().Info("Retrying job with backoff",
 					zap.String("job_id", job.ID),
 					zap.Duration("backoff_duration", backoff),
-					zap.Int32("next_attempt", job.Attempts+1),
+					zap.Int32("next_attempt", currentAttempt+1),
 				)
-				time.Sleep(backoff)
+
+				backoffTimer := time.NewTimer(backoff)
+				select {
+				case <-ctx.Done():
+					backoffTimer.Stop()
+					return ctx.Err()
+				case <-backoffTimer.C:
+				}
+
 				continue
 			}
 
@@ -93,10 +130,10 @@ func (w *jobWorker) ProcessJob(ctx context.Context, job *entity.Job) error {
 
 			zap.L().Warn("Job moved to Dead Letter Queue",
 				zap.String("job_id", job.ID),
-				zap.Int32("total_attempts", job.Attempts),
+				zap.Int32("total_attempts", currentAttempt),
 				zap.String("reason", "Max retry attempts exceeded"),
 			)
-			return fmt.Errorf("job %s permanently failed after %d attempts", job.ID, job.Attempts)
+			return fmt.Errorf("job %s permanently failed after %d attempts", job.ID, currentAttempt)
 		}
 
 		job.Status = entity.StatusCompleted
@@ -133,7 +170,29 @@ func (i Initiator) SetJobRepository(jobRepository _interface.JobRepository) Init
 	}
 }
 
+func (i Initiator) SetBaseDelay(d time.Duration) Initiator {
+	return func(w *jobWorker) *jobWorker {
+		w = i(w)
+		w.baseDelay = d
+		return w
+	}
+}
+
+func (i Initiator) SetWorkLatency(d time.Duration) Initiator {
+	return func(w *jobWorker) *jobWorker {
+		w = i(w)
+		w.workLatency = d
+		return w
+	}
+}
+
 // Build ...
 func (i Initiator) Build() _interface.JobWorker {
-	return i(&jobWorker{})
+	w := i(&jobWorker{})
+
+	if w.baseDelay == 0 {
+		w.baseDelay = 1 * time.Second // Default Production
+	}
+
+	return w
 }
