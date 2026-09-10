@@ -7,7 +7,8 @@ import (
 	_interface "jobqueue/interface"
 	custerr "jobqueue/pkg/errors"
 	"jobqueue/pkg/ulid"
-	"log"
+
+	"go.uber.org/zap"
 )
 
 type jobService struct {
@@ -50,7 +51,10 @@ func (q jobService) Enqueue(ctx context.Context, taskName, key string) (*entity.
 		}
 
 		if existJob != nil {
-			log.Printf("[JobService] Idempotency hit! Returning existing job %s for key %s", existJob.ID, key)
+			zap.L().Info("Idempotency hit! Returning existing job",
+				zap.String("job_id", existJob.ID),
+				zap.String("key", key),
+			)
 			return existJob, nil
 		}
 	}
@@ -118,7 +122,10 @@ func (s *jobService) RetryDeadJob(ctx context.Context, jobID string) (*entity.Jo
 	if s.worker != nil {
 		go func(j *entity.Job) {
 			if err := s.worker.ProcessJob(context.Background(), j); err != nil {
-				log.Printf("[JobService] Error processing requeued job %s: %v", j.ID, err)
+				zap.L().Error("Error processing requeued job",
+					zap.String("job_id", j.ID),
+					zap.Error(err),
+				)
 			}
 		}(deadJob)
 	}

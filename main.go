@@ -21,16 +21,17 @@ import (
 
 	"github.com/labstack/echo"
 	"github.com/labstack/echo/v4/middleware"
-	"github.com/sirupsen/logrus"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
 
 func main() {
 	setupLogger()
-	logger := logrus.New()
-	logger.SetReportCaller(true)
-	e := server.New(config.Data.Server)
+	defer zap.L().Sync()
+	zap.L().Info("Starting Distributed Job Queue Engine with Zap Logger...")
+
+	cfg := config.Data
+	e := server.New(cfg.Server)
 	e.Echo.Use(middleware.LoggerWithConfig(middleware.LoggerConfig{
 		Format: "${remote_ip} ${time_rfc3339_nano} \"${method} ${path}\" ${status} ${bytes_out} \"${referer}\" \"${user_agent}\"\n",
 	}))
@@ -99,6 +100,9 @@ func setupLogger() {
 	configLogger := zap.NewDevelopmentConfig()
 	configLogger.EncoderConfig.EncodeLevel = zapcore.CapitalColorLevelEncoder
 	configLogger.DisableStacktrace = true
-	logger, _ := configLogger.Build()
+	logger, err := configLogger.Build()
+	if err != nil {
+		panic("Failed to initialize Zap logger: " + err.Error())
+	}
 	zap.ReplaceGlobals(logger)
 }
