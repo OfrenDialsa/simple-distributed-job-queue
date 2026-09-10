@@ -28,7 +28,6 @@ func setupTestWorker() (_interface.JobWorker, _interface.JobRepository) {
 	return jobWorker, repo
 }
 
-// Test 1: Menguji Eksekusi Job Normal hingga Status COMPLETED
 func TestProcessJob_Success(t *testing.T) {
 	jobWorker, repo := setupTestWorker()
 	ctx := context.Background()
@@ -56,7 +55,6 @@ func TestProcessJob_Success(t *testing.T) {
 	}
 }
 
-// Test 2: Menguji Logika Retry dan Pemindahan ke DLQ saat Max Attempts Terlampaui
 func TestProcessJob_RetryAndDLQ(t *testing.T) {
 	jobWorker, repo := setupTestWorker()
 	ctx := context.Background()
@@ -96,7 +94,6 @@ func TestProcessJob_RetryAndDLQ(t *testing.T) {
 	}
 }
 
-// Test 3: Menguji Pembatalan Context saat Worker Sedang Melakukan Delay/Sleep
 func TestProcessJob_ContextCancellation(t *testing.T) {
 	jobWorker, repo := setupTestWorker()
 	ctx, cancel := context.WithTimeout(context.Background(), 200*time.Millisecond)
@@ -116,7 +113,6 @@ func TestProcessJob_ContextCancellation(t *testing.T) {
 	}
 }
 
-// Test 4: Concurrency Safety Test (Pengujian 100 Goroutines Eksekusi Bersamaan)
 func TestProcessJob_ConcurrentSafety(t *testing.T) {
 	jobWorker, repo := setupTestWorker()
 	ctx := context.Background()
@@ -124,7 +120,6 @@ func TestProcessJob_ConcurrentSafety(t *testing.T) {
 	const concurrentJobs = 100
 	var wg sync.WaitGroup
 
-	// Memproduksi 100 Jobs secara bersamaan
 	for i := 1; i <= concurrentJobs; i++ {
 		wg.Add(1)
 		go func(id int) {
@@ -147,14 +142,12 @@ func TestProcessJob_ConcurrentSafety(t *testing.T) {
 				return
 			}
 
-			// Jalankan worker secara konkuren
 			_ = jobWorker.ProcessJob(ctx, job)
 		}(i)
 	}
 
 	wg.Wait()
 
-	// Verifikasi bahwa seluruh 100 jobs telah diproses
 	allJobs, err := repo.FindAll(ctx)
 	if err != nil {
 		t.Fatalf("Failed to fetch all jobs: %v", err)
