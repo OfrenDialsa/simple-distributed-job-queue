@@ -57,3 +57,8 @@ func (t JobStatusResolver) Failed() int32 {
 func (t JobStatusResolver) Completed() int32 {
 	return t.Data.Completed
 }
+
+// Dead ...
+func (t *JobStatusResolver) Dead() int32 {
+	return (t.Data.Dead)
+}

@@ -13,6 +13,7 @@ import (
 	"jobqueue/pkg/server"
 	inmemrepo "jobqueue/repository/inmem"
 	"jobqueue/service"
+	"jobqueue/worker"
 	"time"
 
 	_graphql "github.com/graph-gophers/graphql-go"
@@ -56,9 +57,15 @@ func main() {
 		SetBatchFunction().
 		Build()
 
+	//set job worker
+	jobWorker := worker.NewJobWorker().
+		SetJobRepository(jobRepository).
+		Build()
+
 	//set job service
 	jobService := service.NewJobService().
 		SetJobRepository(jobRepository).
+		SetJobWorker(jobWorker).
 		Build()
 
 	jobMutation := mutation.NewJobMutation(jobService, dataloader)

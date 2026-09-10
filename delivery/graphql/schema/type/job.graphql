@@ -10,4 +10,5 @@ type JobStatus {
   running: Int!
   failed: Int!
   completed: Int!
+  dead: Int!
 }

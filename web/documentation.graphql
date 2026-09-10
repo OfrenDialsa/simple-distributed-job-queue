@@ -18,15 +18,35 @@ mutation SimulateUnstableJob {
   }
 }
 
-query GetAllJobs {
-  Jobs {
+mutation RetryDeadJob($id: String!) {
+  RetryDeadJob(id: $id) {
     id
+    task
+    status
+    attempts
   }
 }
 
-query GetJobById {
-  Job(id: "some-id") {
+query GetAllJobs {
+  Jobs {
     id
+    task
+  }
+}
+
+query GetJobById($id: String!) {
+  Job(id: $id) {
+    id
+    task
+    status
+    attempts
+  }
+}
+
+query GetJobsByStatus($status: String!) {
+  JobsByStatus(status: $status) {
+    id
+    task
     status
     attempts
   }
@@ -38,5 +58,6 @@ query GetAllJobStatus{
     running
     failed
     completed
+    dead
   }
 }
