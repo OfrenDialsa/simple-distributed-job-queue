@@ -22,6 +22,10 @@ unittest:
 	@echo "\n\n==================== Start unit test ...... ====================\n\n"
 	@go test ./... --short -cover -race -count=1
 	@echo "\n\n==================== Unit test done ====================\n\n"
+workertest:
+	@echo "\n\n==================== Start Worker Test ...... ====================\n\n"
+	$(GOTEST) -count=1 -race -cover ./worker/...
+	@echo "\n\n==================== Worker Test Done ====================\n\n"
 lint:
 	@golangci-lint run
 clean: 
